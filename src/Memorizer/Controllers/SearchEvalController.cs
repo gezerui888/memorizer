@@ -9,19 +9,18 @@ using Microsoft.AspNetCore.Mvc;
 namespace Memorizer.Controllers;
 
 [ApiController]
+[SearchEvalGate]
 [Route("api/search-eval")]
 public class SearchEvalController : ControllerBase
 {
-    private readonly bool _searchEvalEnabled;
     private readonly IStorage _storage;
     private readonly ILogger<SearchEvalController> _logger;
 
     private const string EvalWorkspaceName = "[Search Eval] Test Corpus";
     private const string CorpusTag = "search-eval-corpus";
 
-    public SearchEvalController(IStorage storage, ILogger<SearchEvalController> logger, IConfiguration configuration)
+    public SearchEvalController(IStorage storage, ILogger<SearchEvalController> logger)
     {
-        _searchEvalEnabled = configuration.GetValue<bool>("SearchEval:Enabled");
         _storage = storage;
         _logger = logger;
     }
@@ -33,9 +32,6 @@ public class SearchEvalController : ControllerBase
     [HttpPost("seed-corpus")]
     public async Task<ActionResult<CorpusMapping>> SeedCorpus(CancellationToken cancellationToken)
     {
-        if (!_searchEvalEnabled)
-            return NotFound(new { message = "Search evaluation endpoints are disabled." });
-
         try
         {
             // Load corpus from embedded resource
@@ -123,9 +119,6 @@ public class SearchEvalController : ControllerBase
         [FromBody] EvaluationRunRequest? request,
         CancellationToken cancellationToken)
     {
-        if (!_searchEvalEnabled)
-            return NotFound(new { message = "Search evaluation endpoints are disabled." });
-
         try
         {
             request ??= new EvaluationRunRequest();
@@ -245,9 +238,6 @@ public class SearchEvalController : ControllerBase
     [HttpDelete("corpus")]
     public async Task<ActionResult> DeleteCorpus(CancellationToken cancellationToken)
     {
-        if (!_searchEvalEnabled)
-            return NotFound(new { message = "Search evaluation endpoints are disabled." });
-
         try
         {
             var mapping = await BuildCorpusMappingAsync(cancellationToken);
@@ -292,9 +282,6 @@ public class SearchEvalController : ControllerBase
     [HttpGet("corpus-status")]
     public async Task<ActionResult> GetCorpusStatus(CancellationToken cancellationToken)
     {
-        if (!_searchEvalEnabled)
-            return NotFound(new { message = "Search evaluation endpoints are disabled." });
-
         try
         {
             var mapping = await BuildCorpusMappingAsync(cancellationToken);
@@ -325,9 +312,6 @@ public class SearchEvalController : ControllerBase
         [FromBody] CompareRequest request,
         CancellationToken cancellationToken)
     {
-        if (!_searchEvalEnabled)
-            return NotFound(new { message = "Search evaluation endpoints are disabled." });
-
         if (string.IsNullOrWhiteSpace(request.Query))
             return BadRequest(new { message = "query is required" });
 
@@ -373,9 +357,6 @@ public class SearchEvalController : ControllerBase
         [FromBody] CompareRequest request,
         CancellationToken cancellationToken)
     {
-        if (!_searchEvalEnabled)
-            return NotFound(new { message = "Search evaluation endpoints are disabled." });
-
         if (string.IsNullOrWhiteSpace(request.Query))
             return BadRequest(new { message = "query is required" });
 
