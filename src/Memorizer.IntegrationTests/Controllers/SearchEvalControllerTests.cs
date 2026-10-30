@@ -73,14 +73,14 @@ public class SearchEvalControllerTests(IntegrationTestFixture fixture)
     {
         using var factory = CreateFactory("true");
         using var client = factory.CreateClient();
+        // Seeding makes 135 sequential embedding requests.
+        client.Timeout = TimeSpan.FromMinutes(5);
         foreach (var path in new[] { "compare", "compare-org-search" })
         {
             using var invalid = await client.PostAsJsonAsync($"/api/search-eval/{path}", new { });
             Assert.True(invalid.StatusCode == HttpStatusCode.BadRequest, await invalid.Content.ReadAsStringAsync());
         }
 
-        HttpStatusCode deleteStatus = default;
-        string deleteBody = "";
         try
         {
             using var seed = await client.PostAsync("/api/search-eval/seed-corpus", null);
@@ -96,15 +96,22 @@ public class SearchEvalControllerTests(IntegrationTestFixture fixture)
                 compare.EnsureSuccessStatusCode();
             }
         }
-        finally
+        catch
         {
-            using var delete = await client.DeleteAsync("/api/search-eval/corpus");
-            deleteStatus = delete.StatusCode;
-            deleteBody = await delete.Content.ReadAsStringAsync();
+            try
+            {
+                using var cleanup = await client.DeleteAsync("/api/search-eval/corpus");
+            }
+            catch
+            {
+                // Preserve the original failure if cleanup also fails.
+            }
+            throw;
         }
 
-        Assert.Equal(HttpStatusCode.OK, deleteStatus);
-        using var deleted = JsonDocument.Parse(deleteBody);
+        using var delete = await client.DeleteAsync("/api/search-eval/corpus");
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        using var deleted = JsonDocument.Parse(await delete.Content.ReadAsStringAsync());
         Assert.True(deleted.RootElement.GetProperty("deleted").GetInt32() > 0);
 
         var empty = await client.GetFromJsonAsync<JsonElement>("/api/search-eval/corpus-status");
